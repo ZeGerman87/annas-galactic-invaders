@@ -45,12 +45,20 @@ export function drawPaused(ctx: CanvasRenderingContext2D, h: number) {
   center(ctx, 'tap to resume', h * 0.54, 16, CYAN)
 }
 
-export function drawWin(ctx: CanvasRenderingContext2D, h: number, score: number, high: number) {
+export function drawWin(ctx: CanvasRenderingContext2D, r: Renderer, h: number, score: number, high: number) {
   dim(ctx, h, 0.7)
-  center(ctx, 'YOU WIN!', h * 0.36, 36, PINK)
-  center(ctx, `score ${score}`, h * 0.47, 18, INK)
-  center(ctx, `high ${high}`, h * 0.53, 14, INK)
-  center(ctx, 'tap to play again', h * 0.66, 16, CYAN)
+  const img = r.image('win')
+  if (img) {
+    const iw = (img as HTMLImageElement).naturalWidth || (img as HTMLCanvasElement).width
+    const ih = (img as HTMLImageElement).naturalHeight || (img as HTMLCanvasElement).height
+    const w = Math.min(300, LOGICAL_W - 30)
+    r.drawSprite('win', { x: LOGICAL_W / 2, y: h * 0.34, w, h: w * (ih / iw) })
+  } else {
+    center(ctx, 'YOU WIN!', h * 0.36, 36, PINK)
+  }
+  center(ctx, `score ${score}`, h * 0.52, 18, INK)
+  center(ctx, `high ${high}`, h * 0.58, 14, INK)
+  center(ctx, 'tap to play again', h * 0.7, 16, CYAN)
 }
 
 export function drawGameOver(ctx: CanvasRenderingContext2D, h: number, score: number, high: number) {

@@ -275,7 +275,7 @@ export class Game {
     if (this.scene === Scene.Title) drawTitle(ctx, r, this.logicalH, this.gs.high)
     else if (this.scene === Scene.LevelCard) drawLevelCard(ctx, this.logicalH, this.levelLabel())
     else if (this.scene === Scene.Paused) drawPaused(ctx, this.logicalH)
-    else if (this.scene === Scene.Win) drawWin(ctx, this.logicalH, this.gs.score, this.gs.high)
+    else if (this.scene === Scene.Win) drawWin(ctx, r, this.logicalH, this.gs.score, this.gs.high)
     else if (this.scene === Scene.GameOver) drawGameOver(ctx, this.logicalH, this.gs.score, this.gs.high)
   }
 

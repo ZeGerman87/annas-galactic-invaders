@@ -20,7 +20,7 @@ const NAMES = [
   'enemy-01', 'enemy-02', 'enemy-03', 'enemy-04',
   'boss-01', 'boss-02', 'boss-03', 'boss-04', 'boss-05',
   'powerup-rapid', 'powerup-spread', 'powerup-shield', 'powerup-life',
-  'shield-block', 'logo',
+  'shield-block', 'logo', 'win',
 ] as const
 
 export const REQUIRED: string[] = [...NAMES]

@@ -255,5 +255,8 @@ if __name__ == "__main__":
     lg = os.path.join(RAW, "logo.png")
     if os.path.exists(lg):
         process_logo(lg)
+    wn = os.path.join(RAW, "win.png")
+    if os.path.exists(wn):
+        process_logo(wn, "win")
     print(f"\nsaved {len(s)} sprites")
     contact_sheet(s)
