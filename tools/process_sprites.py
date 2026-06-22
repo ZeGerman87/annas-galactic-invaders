@@ -190,8 +190,8 @@ def composite_face(face_path, out_name="player-ship"):
     """Circle-crop a portrait into the rocket porthole of the processed ship."""
     rocket = Image.open(os.path.join(OUT, out_name + ".png")).convert("RGBA")
     W, H = rocket.size
-    d = int(W * 0.46)                      # porthole diameter
-    cx, cy = W // 2, int(H * 0.26)         # porthole center (upper-middle)
+    d = int(W * 0.52)                      # porthole diameter
+    cx, cy = W // 2, int(H * 0.305)        # porthole center (upper-middle)
     face = Image.open(face_path).convert("RGBA")
     s = min(face.size)
     face = face.crop(((face.width - s) // 2, (face.height - s) // 2,
