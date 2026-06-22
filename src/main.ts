@@ -34,6 +34,7 @@ Promise.all([loadSprites(), fontsReady]).then(([images]) => {
   resize()
   const r = new Renderer(ctx, images)
   const game = new Game(r, vp.logicalH, startLevel())
+  ;(window as unknown as { game?: unknown }).game = game // dev hook
   canvas.addEventListener('pointerdown', (e) => {
     const rect = canvas.getBoundingClientRect()
     const lx = (e.clientX - rect.left) / vp.scale

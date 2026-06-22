@@ -179,7 +179,6 @@ export class Game {
     }
     if (this.scene !== Scene.Play) return
 
-    if (this.power.hasShield()) this.player.invuln = Math.max(this.player.invuln, 0.1)
     updatePlayer(this.player, targetX, dt)
     this.fire()
 
@@ -237,11 +236,18 @@ export class Game {
     }
 
     if (resolveEnemyHits(this.bullets, this.player)) {
-      this.player.invuln = 1.5; this.flash = 0.12
-      this.shake.add(10); this.audio.sfx('hit')
-      this.particles.push(...burst(this.player.sprite.x, this.player.sprite.y, 16, this.rng, '#45e0ff'))
-      this.power = new PowerState() // getting hit strips collected power-ups
-      if (this.gs.loseLife()) { this.die(); return }
+      this.player.invuln = 1.5; this.flash = 0.12; this.shake.add(10)
+      if (this.power.hasShield()) {
+        // the shield bubble absorbs the hit and pops — no life lost
+        this.power = new PowerState()
+        this.audio.sfx('power')
+        this.particles.push(...burst(this.player.sprite.x, this.player.sprite.y, 24, this.rng, '#00fbfb'))
+      } else {
+        this.audio.sfx('hit')
+        this.particles.push(...burst(this.player.sprite.x, this.player.sprite.y, 16, this.rng, '#45e0ff'))
+        this.power = new PowerState() // a clean hit strips collected power-ups
+        if (this.gs.loseLife()) { this.die(); return }
+      }
     }
 
     this.drops = this.drops.filter((p) => {
@@ -309,6 +315,17 @@ export class Game {
 
     if (this.player.invuln <= 0 || Math.floor(this.player.invuln * 10) % 2 === 0) {
       r.drawSprite('player-ship', this.player.sprite)
+    }
+
+    if (this.power.hasShield()) {
+      const s = this.player.sprite
+      const rad = Math.max(s.w, s.h) / 2 + 7
+      ctx.save()
+      ctx.globalAlpha = 0.18; ctx.fillStyle = '#00fbfb'
+      ctx.beginPath(); ctx.arc(s.x, s.y, rad, 0, Math.PI * 2); ctx.fill()
+      ctx.globalAlpha = 0.9; ctx.strokeStyle = '#7cffff'; ctx.lineWidth = 2
+      ctx.beginPath(); ctx.arc(s.x, s.y, rad, 0, Math.PI * 2); ctx.stroke()
+      ctx.restore()
     }
 
     drawParticles(ctx, this.particles)
