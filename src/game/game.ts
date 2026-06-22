@@ -265,7 +265,7 @@ export class Game {
     const showWorld = this.scene === Scene.Play || this.scene === Scene.LevelCard || this.scene === Scene.Paused
     if (showWorld) { this.drawWorld(ctx); this.drawHud(ctx) }
 
-    if (this.scene === Scene.Title) drawTitle(ctx, this.logicalH, this.gs.high)
+    if (this.scene === Scene.Title) drawTitle(ctx, r, this.logicalH, this.gs.high)
     else if (this.scene === Scene.LevelCard) drawLevelCard(ctx, this.logicalH, this.levelLabel())
     else if (this.scene === Scene.Paused) drawPaused(ctx, this.logicalH)
     else if (this.scene === Scene.Win) drawWin(ctx, this.logicalH, this.gs.score, this.gs.high)
@@ -292,8 +292,7 @@ export class Game {
       r.drawSprite(name, { x: this.boss.sprite.x, y: this.boss.sprite.y, w: this.boss.sprite.w, h: this.boss.sprite.w * asp })
     }
 
-    ctx.fillStyle = '#5bbf36'
-    for (const c of this.shields) if (c.alive) ctx.fillRect(c.x - c.w / 2, c.y - c.h / 2, c.w, c.h)
+    for (const c of this.shields) if (c.alive) r.drawSprite('shield-block', c)
 
     if (this.ufo) {
       const img = r.image('ufo'); const asp = img ? this.aspect(img) : 0.5

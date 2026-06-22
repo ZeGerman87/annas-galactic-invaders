@@ -36,6 +36,7 @@ TARGET_W = {
     "shot-player": 72, "shot-player-2": 72, "shot-player-3": 72, "shot-player-4": 72,
     "shot-enemy": 60, "shot-enemy-2": 60, "shot-enemy-3": 60, "shot-boss": 92,
     "powerup-rapid": 84, "powerup-spread": 84, "powerup-shield": 84, "powerup-life": 84,
+    "shield-block": 96,
 }
 
 
@@ -207,10 +208,49 @@ def composite_face(face_path, out_name="player-ship"):
     print(f"  composited face -> {out_name}.png (cropped to {rocket.size})")
 
 
+def remove_dark_bg(rgb, thresh=55):
+    """Alpha out the dark background of a neon logo (border-connected dark pixels)."""
+    h, w, _ = rgb.shape
+    luma = rgb.astype(np.int16).mean(2)
+    dark = luma < thresh
+    border = np.zeros((h, w), bool)
+    b = max(2, min(h, w) // 80)
+    border[:b, :] = border[-b:, :] = border[:, :b] = border[:, -b:] = True
+    filled = border & dark
+    while True:
+        d = filled.copy()
+        d[1:, :] |= filled[:-1, :]; d[:-1, :] |= filled[1:, :]
+        d[:, 1:] |= filled[:, :-1]; d[:, :-1] |= filled[:, 1:]
+        d &= dark
+        if d.sum() == filled.sum():
+            break
+        filled = d
+    return np.where(filled, 0, 255).astype(np.uint8)
+
+
+def process_logo(path, out_name="logo"):
+    im = Image.open(path).convert("RGB")
+    rgb = np.array(im)
+    out = Image.fromarray(np.dstack([rgb, remove_dark_bg(rgb)]).astype("uint8"), "RGBA")
+    out = refine_and_trim(out)
+    if out is None:
+        print("  !! logo empty after keying"); return
+    if out.width > 700:
+        out = out.resize((700, round(out.height * 700 / out.width)), Image.LANCZOS)
+    out.save(os.path.join(OUT, out_name + ".png"))
+    print(f"  logo -> {out_name}.png {out.size}")
+
+
 if __name__ == "__main__":
     s = run()
     fp = os.path.join(RAW, "anna-face.jpg")
     if os.path.exists(fp):
         composite_face(fp)
+    sb = os.path.join(RAW, "shield-block.png")
+    if os.path.exists(sb):
+        process_image(Image.open(sb), "shield-block")
+    lg = os.path.join(RAW, "logo.png")
+    if os.path.exists(lg):
+        process_logo(lg)
     print(f"\nsaved {len(s)} sprites")
     contact_sheet(s)
