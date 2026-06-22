@@ -28,11 +28,11 @@ import type { Bullet, Enemy, PowerUp } from '../core/types'
 
 interface Ufo { x: number; y: number; w: number; h: number; vx: number }
 
-const DROP_CHANCE = 0.12
+const DROP_CHANCE = 0.16
 const CARD_TIME = 1.2
 
 export class Game {
-  private rng = mulberry32(1234)
+  private rng = mulberry32((Date.now() >>> 0) || 1)
   private stars: Starfield
   private gs = new GameState()
   private power = new PowerState()
@@ -56,6 +56,7 @@ export class Game {
   private total = 0
   private ufo: Ufo | null = null
   private flash = 0
+  private killsSinceDrop = 0
   private bounds = { left: 8, right: LOGICAL_W - 8 }
 
   constructor(private r: Renderer, private logicalH: number, startLevel = 1) {
@@ -83,7 +84,7 @@ export class Game {
     this.bullets = []; this.drops = []; this.ufo = null; this.dir = 1
     this.shields = buildShields(this.logicalH)
     this.player.sprite.x = LOGICAL_W / 2
-    this.power = new PowerState()
+    this.killsSinceDrop = 0
     if (this.cfg.isBoss) {
       this.bossCfg = bossConfig(this.cfg.bossId!)
       this.boss = makeBoss(this.bossCfg, this.logicalH)
@@ -130,6 +131,7 @@ export class Game {
 
   private startGame() {
     this.gs.score = 0; this.gs.lives = 3
+    this.power = new PowerState()
     this.loadLevel(1)
     this.scene = Scene.LevelCard; this.cardTimer = CARD_TIME
   }
@@ -201,7 +203,12 @@ export class Game {
     if (hit.kills) this.audio.sfx('explode')
     for (const pos of hit.killedAt) {
       this.particles.push(...burst(pos.x, pos.y, 9, this.rng, '#ffd24a'))
-      if (shouldDrop(this.rng, DROP_CHANCE)) spawnPowerUp(this.drops, pos.x, pos.y, rollPowerUp(this.rng))
+      this.killsSinceDrop++
+      // random drop, plus a guaranteed drop at least every 7 kills so power-ups always appear
+      if (shouldDrop(this.rng, DROP_CHANCE) || this.killsSinceDrop >= 7) {
+        spawnPowerUp(this.drops, pos.x, pos.y, rollPowerUp(this.rng))
+        this.killsSinceDrop = 0
+      }
     }
 
     if (this.boss) {
@@ -232,6 +239,7 @@ export class Game {
       this.player.invuln = 1.5; this.flash = 0.12
       this.shake.add(10); this.audio.sfx('hit')
       this.particles.push(...burst(this.player.sprite.x, this.player.sprite.y, 16, this.rng, '#45e0ff'))
+      this.power = new PowerState() // getting hit strips collected power-ups
       if (this.gs.loseLife()) { this.die(); return }
     }
 
