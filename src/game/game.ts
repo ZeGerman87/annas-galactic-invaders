@@ -16,6 +16,8 @@ import { makeBoss, updateBoss, damageBoss, bossDefeated } from '../entities/boss
 import { aabb } from '../systems/collision'
 import { burst, updateParticles, drawParticles, Shake } from '../render/particles'
 import { AudioEngine } from '../core/audio'
+import { Scene } from './scenes'
+import { drawTitle, drawLevelCard, drawPaused, drawWin, drawGameOver } from '../ui/screens'
 import type { Renderer } from '../render/renderer'
 import type { Player } from '../entities/player'
 import type { ShieldCell } from '../systems/shields'
@@ -27,6 +29,7 @@ import type { Bullet, Enemy, PowerUp } from '../core/types'
 interface Ufo { x: number; y: number; w: number; h: number; vx: number }
 
 const DROP_CHANCE = 0.12
+const CARD_TIME = 1.2
 
 export class Game {
   private rng = mulberry32(1234)
@@ -38,6 +41,8 @@ export class Game {
   private particles: Particle[] = []
   private muted = false
   private audioStarted = false
+  private scene: Scene
+  private cardTimer = 0
   private player: Player
   private bullets: Bullet[] = []
   private drops: PowerUp[] = []
@@ -60,6 +65,7 @@ export class Game {
     if (img) this.player.sprite.h = this.player.sprite.w * this.aspect(img)
     this.gs.loadHigh()
     this.loadLevel(startLevel)
+    this.scene = startLevel > 1 ? Scene.Play : Scene.Title // ?level=N jumps straight into play (debug)
   }
 
   private aspect(img: CanvasImageSource): number {
@@ -69,12 +75,15 @@ export class Game {
   }
 
   private musicTrack(): 'normal' | 'boss' { return this.cfg.isBoss ? 'boss' : 'normal' }
+  private levelLabel(): string { return this.cfg.isBoss ? `BOSS ${this.cfg.bossId}` : `LEVEL ${this.gs.level}` }
 
   private loadLevel(n: number) {
     this.gs.level = n
     this.cfg = this.levels[n - 1]
     this.bullets = []; this.drops = []; this.ufo = null; this.dir = 1
     this.shields = buildShields(this.logicalH)
+    this.player.sprite.x = LOGICAL_W / 2
+    this.power = new PowerState()
     if (this.cfg.isBoss) {
       this.bossCfg = bossConfig(this.cfg.bossId!)
       this.boss = makeBoss(this.bossCfg, this.logicalH)
@@ -87,20 +96,25 @@ export class Game {
     if (this.audioStarted && !this.muted) this.audio.music(this.musicTrack())
   }
 
-  private advance() {
-    this.gs.addScore(levelClearBonus(this.gs.level))
-    const next = this.gs.level + 1
-    if (next > 20) { this.gs.commitHigh(); this.gs.score = 0; this.loadLevel(1) } // temp loop; Win screen in Task 16
-    else this.loadLevel(next)
-  }
-
-  // --- input / audio control (called from main) ---
+  // --- input / scene control (called from main) ---
   onTap(lx: number, ly: number): boolean {
     this.startAudio()
     const m = this.muteRect()
     if (lx >= m.x && lx <= m.x + m.w && ly >= m.y && ly <= m.y + m.h) { this.toggleMute(); return true }
-    return false
+    switch (this.scene) {
+      case Scene.Title: this.startGame(); return true
+      case Scene.Win:
+      case Scene.GameOver: this.scene = Scene.Title; return true
+      case Scene.Paused: this.scene = Scene.Play; if (!this.muted) this.audio.music(this.musicTrack()); return true
+      case Scene.Play: {
+        const p = this.pauseRect()
+        if (lx >= p.x && lx <= p.x + p.w && ly >= p.y && ly <= p.y + p.h) { this.scene = Scene.Paused; this.audio.music('none'); return true }
+        return false
+      }
+      default: return false
+    }
   }
+
   private startAudio() {
     if (this.audioStarted) return
     this.audioStarted = true
@@ -109,9 +123,23 @@ export class Game {
   }
   private toggleMute() {
     this.muted = this.audio.toggleMuted()
-    if (!this.muted) this.audio.music(this.musicTrack())
+    if (!this.muted && this.scene === Scene.Play) this.audio.music(this.musicTrack())
   }
   private muteRect() { return { x: LOGICAL_W - 30, y: 30, w: 24, h: 18 } }
+  private pauseRect() { return { x: 8, y: 30, w: 22, h: 18 } }
+
+  private startGame() {
+    this.gs.score = 0; this.gs.lives = 3
+    this.loadLevel(1)
+    this.scene = Scene.LevelCard; this.cardTimer = CARD_TIME
+  }
+  private die() { this.gs.commitHigh(); this.audio.music('none'); this.scene = Scene.GameOver }
+  private clearLevel() {
+    this.gs.addScore(levelClearBonus(this.gs.level))
+    if (this.gs.level >= 20) { this.gs.commitHigh(); this.audio.music('none'); this.scene = Scene.Win; return }
+    this.loadLevel(this.gs.level + 1)
+    this.scene = Scene.LevelCard; this.cardTimer = CARD_TIME
+  }
 
   private fire() {
     const p = this.player
@@ -137,10 +165,18 @@ export class Game {
   }
 
   update(dt: number, targetX: number | null) {
-    if (this.flash > 0) this.flash -= dt
     this.stars.update(dt)
     this.shake.update(dt)
     this.particles = updateParticles(this.particles, dt)
+    if (this.flash > 0) this.flash -= dt
+
+    if (this.scene === Scene.LevelCard) {
+      this.cardTimer -= dt
+      if (this.cardTimer <= 0) { this.scene = Scene.Play; if (this.audioStarted && !this.muted) this.audio.music(this.musicTrack()) }
+      return
+    }
+    if (this.scene !== Scene.Play) return
+
     this.power.update(dt)
     if (this.power.hasShield()) this.player.invuln = Math.max(this.player.invuln, 0.1)
     updatePlayer(this.player, targetX, dt)
@@ -173,9 +209,8 @@ export class Game {
       if (bossDefeated(this.boss)) {
         this.particles.push(...burst(this.boss.sprite.x, this.boss.sprite.y, 40, this.rng, '#ff6b9d'))
         this.shake.add(16); this.audio.sfx('explode'); this.audio.sfx('boss')
-        spawnPowerUp(this.drops, this.boss.sprite.x, this.boss.sprite.y, rollPowerUp(this.rng))
         this.boss = null
-        this.advance()
+        this.clearLevel()
         return
       }
     }
@@ -197,7 +232,7 @@ export class Game {
       this.player.invuln = 1.5; this.flash = 0.12
       this.shake.add(10); this.audio.sfx('hit')
       this.particles.push(...burst(this.player.sprite.x, this.player.sprite.y, 16, this.rng, '#45e0ff'))
-      if (this.gs.loseLife()) { this.gs.commitHigh(); this.gs.score = 0; this.gs.lives = 3; this.loadLevel(this.gs.level) } // temp; Game Over in Task 16
+      if (this.gs.loseLife()) { this.die(); return }
     }
 
     this.drops = this.drops.filter((p) => {
@@ -210,7 +245,7 @@ export class Game {
       return true
     })
 
-    if (!this.boss && this.enemies.length && !this.enemies.some((e) => e.alive)) this.advance()
+    if (!this.boss && this.enemies.length && !this.enemies.some((e) => e.alive)) this.clearLevel()
   }
 
   draw(ctx: CanvasRenderingContext2D) {
@@ -219,6 +254,18 @@ export class Game {
     r.drawBackground('background', LOGICAL_W, this.logicalH)
     this.stars.draw(ctx)
 
+    const showWorld = this.scene === Scene.Play || this.scene === Scene.LevelCard || this.scene === Scene.Paused
+    if (showWorld) { this.drawWorld(ctx); this.drawHud(ctx) }
+
+    if (this.scene === Scene.Title) drawTitle(ctx, this.logicalH, this.gs.high)
+    else if (this.scene === Scene.LevelCard) drawLevelCard(ctx, this.logicalH, this.levelLabel())
+    else if (this.scene === Scene.Paused) drawPaused(ctx, this.logicalH)
+    else if (this.scene === Scene.Win) drawWin(ctx, this.logicalH, this.gs.score, this.gs.high)
+    else if (this.scene === Scene.GameOver) drawGameOver(ctx, this.logicalH, this.gs.score, this.gs.high)
+  }
+
+  private drawWorld(ctx: CanvasRenderingContext2D) {
+    const r = this.r
     ctx.save()
     const o = this.shake.offset()
     ctx.translate(o.x, o.y)
@@ -263,8 +310,6 @@ export class Game {
       ctx.fillStyle = `rgba(255,255,255,${Math.min(0.4, this.flash * 3)})`
       ctx.fillRect(0, 0, LOGICAL_W, this.logicalH)
     }
-
-    this.drawHud(ctx)
   }
 
   private drawHud(ctx: CanvasRenderingContext2D) {
@@ -279,6 +324,15 @@ export class Game {
     ctx.textAlign = 'right'; ctx.fillText(`♥ ${this.gs.lives}`, LOGICAL_W - 10, 22)
     ctx.textAlign = 'left'
 
+    // pause button (only during play)
+    if (this.scene === Scene.Play) {
+      const p = this.pauseRect()
+      ctx.fillStyle = '#e1dfff'
+      ctx.fillRect(p.x + 4, p.y + 2, 4, 14)
+      ctx.fillRect(p.x + 12, p.y + 2, 4, 14)
+    }
+
+    // mute button
     const m = this.muteRect()
     ctx.fillStyle = this.muted ? '#6b6b8a' : '#e1dfff'
     ctx.fillRect(m.x, m.y + 5, 4, 8)
