@@ -199,8 +199,12 @@ def composite_face(face_path, out_name="player-ship"):
     mask = Image.new("L", (d, d), 0)
     ImageDraw.Draw(mask).ellipse((0, 0, d, d), fill=255)
     rocket.paste(face, (cx - d // 2, cy - d // 2), mask)
+    rocket = rocket.crop((0, 0, W, int(H * 0.66)))   # drop the detached exhaust + gap below the ship
+    bb = rocket.getbbox()
+    if bb:
+        rocket = rocket.crop(bb)
     rocket.save(os.path.join(OUT, out_name + ".png"))
-    print(f"  composited face -> {out_name}.png (ship {W}x{H}, d={d}, cy={cy})")
+    print(f"  composited face -> {out_name}.png (cropped to {rocket.size})")
 
 
 if __name__ == "__main__":
