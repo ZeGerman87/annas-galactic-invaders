@@ -9,7 +9,7 @@ export function stepFormation(
 ): { dir: number; dropped: boolean } {
   const alive = enemies.filter((e) => e.alive)
   if (!alive.length) return { dir, dropped: false }
-  const speed = baseSpeed * (1 + ((total - alive.length) / total) * 2)
+  const speed = baseSpeed * (1 + ((total - alive.length) / total) * 1.2)
   const dx = dir * speed * dt
   let minX = Infinity, maxX = -Infinity
   for (const e of alive) {

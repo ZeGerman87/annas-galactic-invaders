@@ -91,7 +91,7 @@ export class Game {
       this.enemies = []; this.total = 0
     } else {
       this.boss = null; this.bossCfg = null
-      this.enemies = buildWave(this.cfg.rows, this.cfg.cols, this.cfg.rowTypes)
+      this.enemies = buildWave(this.gs.level, this.cfg.rows, this.cfg.cols)
       this.total = this.enemies.length
     }
     if (this.audioStarted && !this.muted) this.audio.music(this.musicTrack())
@@ -188,6 +188,8 @@ export class Game {
     } else {
       this.dir = stepFormation(this.enemies, this.dir, dt, this.bounds, this.cfg.baseSpeed, this.cfg.dropY, this.total).dir
       enemyFire(this.enemies, this.bullets, this.rng, this.cfg.fireRate, dt)
+      // invasion: if any enemy reaches the player's row, it's game over
+      if (this.enemies.some((e) => e.alive && e.y >= this.player.sprite.y)) { this.die(); return }
     }
     this.maybeUfo(dt)
 
@@ -324,11 +326,12 @@ export class Game {
       ctx.fillStyle = '#e24b4a'; ctx.fillRect(16, 44, (LOGICAL_W - 32) * Math.max(0, this.boss.hp / this.boss.maxHp), 9)
     }
     ctx.fillStyle = '#e1dfff'
-    ctx.font = '14px ui-monospace, monospace'
-    ctx.textAlign = 'left'; ctx.fillText(`SCORE ${this.gs.score}`, 10, 22)
-    ctx.textAlign = 'center'; ctx.fillText(this.cfg.isBoss ? `BOSS ${this.cfg.bossId}` : `LV ${this.gs.level}`, LOGICAL_W / 2, 22)
-    ctx.textAlign = 'right'; ctx.fillText(`♥ ${this.gs.lives}`, LOGICAL_W - 10, 22)
-    ctx.textAlign = 'left'
+    ctx.font = '700 14px "Orbitron", ui-monospace, monospace'
+    ctx.shadowColor = '#9b8cff'; ctx.shadowBlur = 6
+    ctx.textAlign = 'left'; ctx.fillText(`SCORE ${this.gs.score}`, 10, 23)
+    ctx.textAlign = 'center'; ctx.fillText(this.cfg.isBoss ? `BOSS ${this.cfg.bossId}` : `LV ${this.gs.level}`, LOGICAL_W / 2, 23)
+    ctx.textAlign = 'right'; ctx.fillText(`♥ ${this.gs.lives}`, LOGICAL_W - 10, 23)
+    ctx.shadowBlur = 0; ctx.textAlign = 'left'
 
     // pause button (only during play)
     if (this.scene === Scene.Play) {

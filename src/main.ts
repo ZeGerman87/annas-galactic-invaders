@@ -26,7 +26,11 @@ function startLevel(): number {
   return Number.isInteger(n) && n >= 1 && n <= 20 ? n : 1
 }
 
-loadSprites().then((images) => {
+const fontsReady = document.fonts
+  ? document.fonts.load('700 24px "Orbitron"').then(() => undefined).catch(() => undefined)
+  : Promise.resolve()
+
+Promise.all([loadSprites(), fontsReady]).then(([images]) => {
   resize()
   const r = new Renderer(ctx, images)
   const game = new Game(r, vp.logicalH, startLevel())

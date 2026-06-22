@@ -1,5 +1,5 @@
 export interface LevelConfig {
-  index: number; isBoss: boolean; rows: number; cols: number; rowTypes: number[]
+  index: number; isBoss: boolean; rows: number; cols: number
   baseSpeed: number; dropY: number; fireRate: number; ufoChance: number; bossId?: number
 }
 export interface BossConfig { id: number; sprite: string; hp: number; minionType: number; fireRate: number }
@@ -12,7 +12,7 @@ export function buildLevels(): LevelConfig[] {
     const tier = Math.floor((i - 1) / 4) // 0..4
     if (BOSS_LEVELS.includes(i)) {
       out.push({
-        index: i, isBoss: true, rows: 0, cols: 0, rowTypes: [],
+        index: i, isBoss: true, rows: 0, cols: 0,
         baseSpeed: 0, dropY: 0, fireRate: 0, ufoChance: 0.05,
         bossId: BOSS_LEVELS.indexOf(i) + 1,
       })
@@ -20,10 +20,9 @@ export function buildLevels(): LevelConfig[] {
     }
     const rows = Math.min(3 + Math.floor(i / 6), 5)
     const cols = Math.min(5 + Math.floor(i / 4), 6)
-    const rowTypes = Array.from({ length: rows }, (_, r) => Math.min(r + (tier > 1 ? 1 : 0), 3))
     out.push({
-      index: i, isBoss: false, rows, cols, rowTypes,
-      baseSpeed: 14 + i * 1.6, dropY: 10 + tier * 2,
+      index: i, isBoss: false, rows, cols,
+      baseSpeed: 12 + i * 0.8, dropY: 8 + tier,
       fireRate: 0.6 + i * 0.09, ufoChance: 0.04 + tier * 0.008,
     })
   }

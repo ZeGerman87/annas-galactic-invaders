@@ -15,11 +15,10 @@ describe('levels', () => {
     const speeds = L.filter((l) => !l.isBoss).map((l) => l.baseSpeed)
     for (let i = 1; i < speeds.length; i++) expect(speeds[i]).toBeGreaterThanOrEqual(speeds[i - 1])
   })
-  it('caps grid size and references valid enemy types', () => {
+  it('caps grid size', () => {
     for (const l of L) if (!l.isBoss) {
-      expect(l.cols).toBeLessThanOrEqual(9)
+      expect(l.cols).toBeLessThanOrEqual(6)
       expect(l.rows).toBeLessThanOrEqual(5)
-      expect(l.rowTypes.every((t) => t >= 0 && t <= 3)).toBe(true)
     }
   })
   it('boss config scales hp with id', () => {

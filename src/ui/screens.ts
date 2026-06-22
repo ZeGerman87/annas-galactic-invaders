@@ -6,8 +6,11 @@ const PINK = '#ffabf3', CYAN = '#00fbfb', INK = '#e1dfff'
 function center(ctx: CanvasRenderingContext2D, text: string, y: number, size: number, color: string) {
   ctx.fillStyle = color
   ctx.textAlign = 'center'
-  ctx.font = `${size}px "Space Grotesk", system-ui, sans-serif`
+  ctx.font = `700 ${size}px "Orbitron", system-ui, sans-serif`
+  ctx.shadowColor = color
+  ctx.shadowBlur = size * 0.5
   ctx.fillText(text, LOGICAL_W / 2, y)
+  ctx.shadowBlur = 0
   ctx.textAlign = 'left'
 }
 
