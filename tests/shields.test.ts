@@ -11,7 +11,7 @@ describe('shields', () => {
     expect(c.length).toBeGreaterThan(12)
     expect(c.every((x) => x.alive)).toBe(true)
   })
-  it('enemy shots erode cells; player shots pass through', () => {
+  it('enemy shots erode cells; player shots are blocked but do not erode', () => {
     const cells = buildShields(640, 1)
     const target = cells[0]
     const enemy = [shot(target.x, target.y, 'enemy')]
@@ -22,8 +22,8 @@ describe('shields', () => {
     const survivor = cells.find((c) => c.alive)!
     const player = [shot(survivor.x, survivor.y, 'player')]
     damageShields(player, cells)
-    expect(player[0].dead).toBe(false)   // not consumed
-    expect(survivor.alive).toBe(true)    // not eroded
+    expect(player[0].dead).toBe(true)    // blocked / consumed
+    expect(survivor.alive).toBe(true)    // but not eroded
   })
   it('different levels produce different shapes', () => {
     expect(buildShields(640, 1).length).not.toBe(buildShields(640, 2).length)

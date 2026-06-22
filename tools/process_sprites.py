@@ -147,11 +147,14 @@ def run():
         if process_image(Image.open(face[0]), "player-ship"):
             saved.append("player-ship")
 
-    # background: just flatten to PNG (no alpha needed)
+    # background: downscale + compress to JPEG (no alpha needed; keeps the build light)
     bg = find("deep_space_background")
     if bg:
-        Image.open(bg).convert("RGB").save(os.path.join(OUT, "background.png"))
-        print("  -> background.png (passthrough)")
+        im = Image.open(bg).convert("RGB")
+        bw = 720
+        im.resize((bw, round(im.height * bw / im.width)), Image.LANCZOS).save(
+            os.path.join(OUT, "background.jpg"), quality=78, optimize=True)
+        print("  -> background.jpg (compressed)")
         saved.append("background")
 
     return saved

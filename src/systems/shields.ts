@@ -36,10 +36,17 @@ export function buildShields(logicalH: number, level = 1): ShieldCell[] {
 
 export function damageShields(bullets: Bullet[], cells: ShieldCell[]): void {
   for (const b of bullets) {
-    if (b.dead || b.from === 'player') continue // player shots pass through shields
+    if (b.dead) continue
     for (const c of cells) {
       if (!c.alive) continue
-      if (aabb(b, c)) { c.hp -= 1; if (c.hp <= 0) c.alive = false; b.dead = true; break }
+      if (aabb(b, c)) {
+        b.dead = true // the shield stops the shot (player and enemy alike)
+        if (b.from !== 'player') { // ...but only enemy/boss fire erodes it
+          c.hp -= 1
+          if (c.hp <= 0) c.alive = false
+        }
+        break
+      }
     }
   }
 }

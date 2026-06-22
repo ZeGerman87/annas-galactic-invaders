@@ -9,6 +9,7 @@ export class PowerState {
 
   apply(kind: PowerUpType, onLife: () => void) {
     if (kind === 'life') { onLife(); return }
+    this.on.clear() // one active power-up at a time — a new pickup replaces the old
     this.on.add(kind)
   }
   active(kind: Timed) { return this.on.has(kind) }

@@ -6,6 +6,7 @@ export default defineConfig({
   test: { globals: true, environment: 'jsdom' },
   plugins: [
     VitePWA({
+      selfDestroying: true, // ship a service worker that unregisters the old one + clears caches (kills stale-cache problem)
       registerType: 'autoUpdate',
       includeAssets: ['assets/sprites/*.png'],
       manifest: {
