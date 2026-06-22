@@ -26,8 +26,9 @@ export class PowerState {
 }
 
 export function rollPowerUp(rng: () => number): PowerUpType {
+  // weighted toward the shooting power-ups; shield is rarer (it's strong and has the bubble)
   const r = rng()
-  return r < 0.34 ? 'rapid' : r < 0.64 ? 'spread' : r < 0.9 ? 'shield' : 'life'
+  return r < 0.38 ? 'rapid' : r < 0.72 ? 'spread' : r < 0.9 ? 'shield' : 'life'
 }
 
 export function shouldDrop(rng: () => number, chance: number): boolean {

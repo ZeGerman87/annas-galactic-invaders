@@ -367,5 +367,12 @@ export class Game {
       ctx.strokeStyle = '#e24b4a'; ctx.lineWidth = 1.5
       ctx.beginPath(); ctx.moveTo(m.x + 14, m.y + 4); ctx.lineTo(m.x + 21, m.y + 14); ctx.moveTo(m.x + 21, m.y + 4); ctx.lineTo(m.x + 14, m.y + 14); ctx.stroke()
     }
+
+    // active power-up loadout (top-left) so the shooting power-up is as visible as the shield bubble
+    let ix = 10
+    const puIcon = (name: string) => { this.r.drawSprite(name, { x: ix + 8, y: 56, w: 16, h: 16 }); ix += 18 }
+    if (this.power.active('rapid')) puIcon('powerup-rapid')
+    if (this.power.active('spread')) puIcon('powerup-spread')
+    if (this.power.hasShield()) puIcon('powerup-shield')
   }
 }
