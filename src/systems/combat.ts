@@ -4,16 +4,24 @@ import { aabb } from './collision'
 import { spawnBullet } from '../entities/bullet'
 import { POINTS } from './scoring'
 
-export function resolvePlayerHits(bullets: Bullet[], enemies: Enemy[]): { points: number; kills: number } {
+export function resolvePlayerHits(
+  bullets: Bullet[], enemies: Enemy[],
+): { points: number; kills: number; killedAt: { x: number; y: number }[] } {
   let points = 0, kills = 0
+  const killedAt: { x: number; y: number }[] = []
   for (const b of bullets) {
     if (b.from !== 'player' || b.dead) continue
     for (const e of enemies) {
       if (!e.alive) continue
-      if (aabb(b, e)) { e.alive = false; b.dead = true; points += POINTS[e.type] ?? 10; kills++; break }
+      if (aabb(b, e)) {
+        e.alive = false; b.dead = true
+        points += POINTS[e.type] ?? 10; kills++
+        killedAt.push({ x: e.x, y: e.y })
+        break
+      }
     }
   }
-  return { points, kills }
+  return { points, kills, killedAt }
 }
 
 export function resolveEnemyHits(bullets: Bullet[], player: Player): boolean {
