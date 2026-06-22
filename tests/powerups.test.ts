@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { PowerState, rollPowerUp, shouldDrop, DURATIONS } from '../src/systems/powerups'
+import { PowerState, rollPowerUp, shouldDrop } from '../src/systems/powerups'
 import { mulberry32 } from '../src/core/rng'
 
 describe('powerups', () => {
@@ -12,21 +12,21 @@ describe('powerups', () => {
     const p = new PowerState(); p.apply('spread', () => {})
     expect(p.maxBullets()).toBe(3)
   })
-  it('effects expire after their duration', () => {
+  it('effects persist (no time expiry); a fresh state has none', () => {
     const p = new PowerState(); p.apply('shield', () => {})
     expect(p.active('shield')).toBe(true)
-    p.update(DURATIONS.shield + 0.1)
-    expect(p.active('shield')).toBe(false)
+    expect(p.hasShield()).toBe(true)
+    expect(new PowerState().active('shield')).toBe(false)
   })
-  it('life calls onLife and is not a timer', () => {
+  it('life calls onLife and is not a fire effect', () => {
     const p = new PowerState(); let lives = 3
     p.apply('life', () => { lives++ })
     expect(lives).toBe(4)
+    expect(p.maxBullets()).toBe(1)
   })
-  it('rng-seeded rolls are valid and drop gate works', () => {
+  it('rng rolls are valid and the drop gate works', () => {
     const r = mulberry32(7)
-    const kinds = [rollPowerUp(r), rollPowerUp(r), rollPowerUp(r)]
-    expect(kinds.every((k) => ['rapid', 'spread', 'shield', 'life'].includes(k))).toBe(true)
+    expect(['rapid', 'spread', 'shield', 'life']).toContain(rollPowerUp(r))
     expect(shouldDrop(() => 0.01, 0.1)).toBe(true)
     expect(shouldDrop(() => 0.9, 0.1)).toBe(false)
   })

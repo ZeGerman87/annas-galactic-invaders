@@ -1,22 +1,20 @@
 import type { PowerUpType } from '../core/types'
 
 type Timed = Exclude<PowerUpType, 'life'>
-export const DURATIONS: Record<Timed, number> = { rapid: 8, spread: 8, shield: 6 }
 
+// Power-ups persist until the player takes a hit (PowerState is recreated then).
+// No time expiry — they carry across levels and boss fights.
 export class PowerState {
-  private timers: Record<Timed, number> = { rapid: 0, spread: 0, shield: 0 }
+  private on = new Set<Timed>()
 
   apply(kind: PowerUpType, onLife: () => void) {
     if (kind === 'life') { onLife(); return }
-    this.timers[kind] = DURATIONS[kind]
+    this.on.add(kind)
   }
-  update(dt: number) {
-    (Object.keys(this.timers) as Timed[]).forEach((k) => { this.timers[k] = Math.max(0, this.timers[k] - dt) })
-  }
-  active(kind: Timed) { return this.timers[kind] > 0 }
-  maxBullets() { return this.active('rapid') ? 4 : this.active('spread') ? 3 : 1 }
-  fireInterval(base: number) { return this.active('rapid') ? base / 3 : base }
-  hasShield() { return this.active('shield') }
+  active(kind: Timed) { return this.on.has(kind) }
+  maxBullets() { return this.on.has('rapid') ? 4 : this.on.has('spread') ? 3 : 1 }
+  fireInterval(base: number) { return this.on.has('rapid') ? base / 3 : base }
+  hasShield() { return this.on.has('shield') }
 }
 
 export function rollPowerUp(rng: () => number): PowerUpType {

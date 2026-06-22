@@ -1,11 +1,12 @@
 import type { Bullet, Sprite } from '../core/types'
 import { clampX, canFire } from '../core/input'
+import { LOGICAL_W } from '../core/viewport'
 import { spawnBullet, activePlayerBullets } from './bullet'
 
 export interface Player { sprite: Sprite; fireTimer: number; speed: number; invuln: number }
 
 export function makePlayer(logicalH: number): Player {
-  return { sprite: { x: 180, y: logicalH - 80, w: 30, h: 54 }, fireTimer: 0, speed: 600, invuln: 0 }
+  return { sprite: { x: LOGICAL_W / 2, y: logicalH - 80, w: 30, h: 54 }, fireTimer: 0, speed: 600, invuln: 0 }
 }
 
 export function updatePlayer(p: Player, targetX: number | null, dt: number) {

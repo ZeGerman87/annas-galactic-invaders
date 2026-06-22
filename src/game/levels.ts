@@ -19,7 +19,7 @@ export function buildLevels(): LevelConfig[] {
       continue
     }
     const rows = Math.min(3 + Math.floor(i / 6), 5)
-    const cols = Math.min(5 + Math.floor(i / 4), 9)
+    const cols = Math.min(5 + Math.floor(i / 4), 6)
     const rowTypes = Array.from({ length: rows }, (_, r) => Math.min(r + (tier > 1 ? 1 : 0), 3))
     out.push({
       index: i, isBoss: false, rows, cols, rowTypes,
@@ -34,8 +34,8 @@ export function bossConfig(bossId: number): BossConfig {
   return {
     id: bossId,
     sprite: `boss-0${bossId}`,
-    hp: 40 + bossId * 25,
+    hp: 6 + (bossId - 1) * 5,
     minionType: Math.min(bossId, 3),
-    fireRate: 1.2 + bossId * 0.4,
+    fireRate: 0.7 + bossId * 0.25,
   }
 }

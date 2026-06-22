@@ -82,7 +82,7 @@ export class Game {
     this.gs.level = n
     this.cfg = this.levels[n - 1]
     this.bullets = []; this.drops = []; this.ufo = null; this.dir = 1
-    this.shields = buildShields(this.logicalH)
+    this.shields = buildShields(this.logicalH, this.gs.level)
     this.player.sprite.x = LOGICAL_W / 2
     this.killsSinceDrop = 0
     if (this.cfg.isBoss) {
@@ -179,7 +179,6 @@ export class Game {
     }
     if (this.scene !== Scene.Play) return
 
-    this.power.update(dt)
     if (this.power.hasShield()) this.player.invuln = Math.max(this.player.invuln, 0.1)
     updatePlayer(this.player, targetX, dt)
     this.fire()

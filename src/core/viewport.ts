@@ -1,6 +1,6 @@
 import type { Vec } from './types'
 
-export const LOGICAL_W = 360
+export const LOGICAL_W = 300 // narrower logical field => all sprites render ~20% larger on screen
 
 export interface Viewport { scale: number; logicalH: number }
 
