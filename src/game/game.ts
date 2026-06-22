@@ -14,11 +14,14 @@ import { PowerState, rollPowerUp, shouldDrop } from '../systems/powerups'
 import { spawnPowerUp, updatePowerUps, POWERUP_SPRITE } from '../entities/powerup'
 import { makeBoss, updateBoss, damageBoss, bossDefeated } from '../entities/boss'
 import { aabb } from '../systems/collision'
+import { burst, updateParticles, drawParticles, Shake } from '../render/particles'
+import { AudioEngine } from '../core/audio'
 import type { Renderer } from '../render/renderer'
 import type { Player } from '../entities/player'
 import type { ShieldCell } from '../systems/shields'
 import type { LevelConfig, BossConfig } from './levels'
 import type { Boss } from '../entities/boss'
+import type { Particle } from '../render/particles'
 import type { Bullet, Enemy, PowerUp } from '../core/types'
 
 interface Ufo { x: number; y: number; w: number; h: number; vx: number }
@@ -30,6 +33,11 @@ export class Game {
   private stars: Starfield
   private gs = new GameState()
   private power = new PowerState()
+  private audio = new AudioEngine()
+  private shake = new Shake()
+  private particles: Particle[] = []
+  private muted = false
+  private audioStarted = false
   private player: Player
   private bullets: Bullet[] = []
   private drops: PowerUp[] = []
@@ -60,6 +68,8 @@ export class Game {
     return w ? h / w : 1
   }
 
+  private musicTrack(): 'normal' | 'boss' { return this.cfg.isBoss ? 'boss' : 'normal' }
+
   private loadLevel(n: number) {
     this.gs.level = n
     this.cfg = this.levels[n - 1]
@@ -74,6 +84,7 @@ export class Game {
       this.enemies = buildWave(this.cfg.rows, this.cfg.cols, this.cfg.rowTypes)
       this.total = this.enemies.length
     }
+    if (this.audioStarted && !this.muted) this.audio.music(this.musicTrack())
   }
 
   private advance() {
@@ -82,6 +93,25 @@ export class Game {
     if (next > 20) { this.gs.commitHigh(); this.gs.score = 0; this.loadLevel(1) } // temp loop; Win screen in Task 16
     else this.loadLevel(next)
   }
+
+  // --- input / audio control (called from main) ---
+  onTap(lx: number, ly: number): boolean {
+    this.startAudio()
+    const m = this.muteRect()
+    if (lx >= m.x && lx <= m.x + m.w && ly >= m.y && ly <= m.y + m.h) { this.toggleMute(); return true }
+    return false
+  }
+  private startAudio() {
+    if (this.audioStarted) return
+    this.audioStarted = true
+    this.audio.unlock()
+    if (!this.muted) this.audio.music(this.musicTrack())
+  }
+  private toggleMute() {
+    this.muted = this.audio.toggleMuted()
+    if (!this.muted) this.audio.music(this.musicTrack())
+  }
+  private muteRect() { return { x: LOGICAL_W - 30, y: 30, w: 24, h: 18 } }
 
   private fire() {
     const p = this.player
@@ -93,6 +123,7 @@ export class Game {
       this.bullets[this.bullets.length - 1].vx = vx
     }
     p.fireTimer = this.power.fireInterval(0.35)
+    this.audio.sfx('shoot')
   }
 
   private maybeUfo(dt: number) {
@@ -108,6 +139,8 @@ export class Game {
   update(dt: number, targetX: number | null) {
     if (this.flash > 0) this.flash -= dt
     this.stars.update(dt)
+    this.shake.update(dt)
+    this.particles = updateParticles(this.particles, dt)
     this.power.update(dt)
     if (this.power.hasShield()) this.player.invuln = Math.max(this.player.invuln, 0.1)
     updatePlayer(this.player, targetX, dt)
@@ -129,13 +162,17 @@ export class Game {
 
     const hit = resolvePlayerHits(this.bullets, this.enemies)
     if (hit.points) this.gs.addScore(hit.points)
+    if (hit.kills) this.audio.sfx('explode')
     for (const pos of hit.killedAt) {
+      this.particles.push(...burst(pos.x, pos.y, 9, this.rng, '#ffd24a'))
       if (shouldDrop(this.rng, DROP_CHANCE)) spawnPowerUp(this.drops, pos.x, pos.y, rollPowerUp(this.rng))
     }
 
     if (this.boss) {
-      if (damageBoss(this.bullets, this.boss)) this.flash = 0.05
+      if (damageBoss(this.bullets, this.boss)) { this.flash = 0.05; this.audio.sfx('hit') }
       if (bossDefeated(this.boss)) {
+        this.particles.push(...burst(this.boss.sprite.x, this.boss.sprite.y, 40, this.rng, '#ff6b9d'))
+        this.shake.add(16); this.audio.sfx('explode'); this.audio.sfx('boss')
         spawnPowerUp(this.drops, this.boss.sprite.x, this.boss.sprite.y, rollPowerUp(this.rng))
         this.boss = null
         this.advance()
@@ -147,6 +184,8 @@ export class Game {
       for (const b of this.bullets) {
         if (b.from === 'player' && !b.dead && aabb(b, this.ufo)) {
           b.dead = true; this.gs.addScore(UFO_BONUS)
+          this.particles.push(...burst(this.ufo.x, this.ufo.y, 14, this.rng, '#ffe39b'))
+          this.audio.sfx('power')
           if (shouldDrop(this.rng, 0.5)) spawnPowerUp(this.drops, this.ufo.x, this.ufo.y, rollPowerUp(this.rng))
           this.ufo = null
           break
@@ -155,12 +194,19 @@ export class Game {
     }
 
     if (resolveEnemyHits(this.bullets, this.player)) {
-      this.player.invuln = 1.5; this.flash = 0.1
+      this.player.invuln = 1.5; this.flash = 0.12
+      this.shake.add(10); this.audio.sfx('hit')
+      this.particles.push(...burst(this.player.sprite.x, this.player.sprite.y, 16, this.rng, '#45e0ff'))
       if (this.gs.loseLife()) { this.gs.commitHigh(); this.gs.score = 0; this.gs.lives = 3; this.loadLevel(this.gs.level) } // temp; Game Over in Task 16
     }
 
     this.drops = this.drops.filter((p) => {
-      if (aabb(p, this.player.sprite)) { this.power.apply(p.kind, () => { this.gs.lives++ }); return false }
+      if (aabb(p, this.player.sprite)) {
+        this.power.apply(p.kind, () => { this.gs.lives++ })
+        this.audio.sfx('power')
+        this.particles.push(...burst(p.x, p.y, 10, this.rng, '#79ff5b'))
+        return false
+      }
       return true
     })
 
@@ -172,6 +218,10 @@ export class Game {
     r.clear(LOGICAL_W, this.logicalH)
     r.drawBackground('background', LOGICAL_W, this.logicalH)
     this.stars.draw(ctx)
+
+    ctx.save()
+    const o = this.shake.offset()
+    ctx.translate(o.x, o.y)
 
     for (const e of this.enemies) {
       if (!e.alive) continue
@@ -206,6 +256,9 @@ export class Game {
       r.drawSprite('player-ship', this.player.sprite)
     }
 
+    drawParticles(ctx, this.particles)
+    ctx.restore()
+
     if (this.flash > 0) {
       ctx.fillStyle = `rgba(255,255,255,${Math.min(0.4, this.flash * 3)})`
       ctx.fillRect(0, 0, LOGICAL_W, this.logicalH)
@@ -225,5 +278,14 @@ export class Game {
     ctx.textAlign = 'center'; ctx.fillText(this.cfg.isBoss ? `BOSS ${this.cfg.bossId}` : `LV ${this.gs.level}`, LOGICAL_W / 2, 22)
     ctx.textAlign = 'right'; ctx.fillText(`♥ ${this.gs.lives}`, LOGICAL_W - 10, 22)
     ctx.textAlign = 'left'
+
+    const m = this.muteRect()
+    ctx.fillStyle = this.muted ? '#6b6b8a' : '#e1dfff'
+    ctx.fillRect(m.x, m.y + 5, 4, 8)
+    ctx.beginPath(); ctx.moveTo(m.x + 4, m.y + 9); ctx.lineTo(m.x + 11, m.y + 2); ctx.lineTo(m.x + 11, m.y + 16); ctx.closePath(); ctx.fill()
+    if (this.muted) {
+      ctx.strokeStyle = '#e24b4a'; ctx.lineWidth = 1.5
+      ctx.beginPath(); ctx.moveTo(m.x + 14, m.y + 4); ctx.lineTo(m.x + 21, m.y + 14); ctx.moveTo(m.x + 21, m.y + 4); ctx.lineTo(m.x + 14, m.y + 14); ctx.stroke()
+    }
   }
 }

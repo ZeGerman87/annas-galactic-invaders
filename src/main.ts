@@ -30,5 +30,11 @@ loadSprites().then((images) => {
   resize()
   const r = new Renderer(ctx, images)
   const game = new Game(r, vp.logicalH, startLevel())
+  canvas.addEventListener('pointerdown', (e) => {
+    const rect = canvas.getBoundingClientRect()
+    const lx = (e.clientX - rect.left) / vp.scale
+    const ly = (e.clientY - rect.top) / vp.scale
+    if (game.onTap(lx, ly)) pointer.targetX = null // tap hit the mute button — don't move the ship
+  })
   createLoop((dt) => game.update(dt, pointer.targetX), () => game.draw(ctx)).start()
 })
