@@ -1,0 +1,8 @@
+node_modules
+dist
+dev-dist
+.DS_Store
+
+# Keep the personal source photo out of version history (the face is baked
+# into assets/sprites/player-ship.png, which is what ships in-game).
+assets/raw/anna-face.jpg

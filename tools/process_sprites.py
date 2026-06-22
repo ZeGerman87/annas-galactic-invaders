@@ -186,7 +186,27 @@ def contact_sheet(names):
     print("contact sheet ->", out)
 
 
+def composite_face(face_path, out_name="player-ship"):
+    """Circle-crop a portrait into the rocket porthole of the processed ship."""
+    rocket = Image.open(os.path.join(OUT, out_name + ".png")).convert("RGBA")
+    W, H = rocket.size
+    d = int(W * 0.46)                      # porthole diameter
+    cx, cy = W // 2, int(H * 0.26)         # porthole center (upper-middle)
+    face = Image.open(face_path).convert("RGBA")
+    s = min(face.size)
+    face = face.crop(((face.width - s) // 2, (face.height - s) // 2,
+                      (face.width + s) // 2, (face.height + s) // 2)).resize((d, d), Image.LANCZOS)
+    mask = Image.new("L", (d, d), 0)
+    ImageDraw.Draw(mask).ellipse((0, 0, d, d), fill=255)
+    rocket.paste(face, (cx - d // 2, cy - d // 2), mask)
+    rocket.save(os.path.join(OUT, out_name + ".png"))
+    print(f"  composited face -> {out_name}.png (ship {W}x{H}, d={d}, cy={cy})")
+
+
 if __name__ == "__main__":
     s = run()
+    fp = os.path.join(RAW, "anna-face.jpg")
+    if os.path.exists(fp):
+        composite_face(fp)
     print(f"\nsaved {len(s)} sprites")
     contact_sheet(s)
