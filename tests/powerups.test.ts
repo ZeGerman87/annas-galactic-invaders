@@ -8,20 +8,31 @@ describe('powerups', () => {
     expect(p.maxBullets()).toBe(4)
     expect(p.fireInterval(0.3)).toBeCloseTo(0.1, 5)
   })
-  it('spread raises max bullets to 3 without rapid', () => {
+  it('spread raises max bullets to 3', () => {
     const p = new PowerState(); p.apply('spread', () => {})
     expect(p.maxBullets()).toBe(3)
   })
-  it('effects persist (no time expiry); a fresh state has none', () => {
-    const p = new PowerState(); p.apply('shield', () => {})
-    expect(p.active('shield')).toBe(true)
-    expect(p.hasShield()).toBe(true)
-    expect(new PowerState().active('shield')).toBe(false)
+  it('a new fire power-up replaces the previous one', () => {
+    const p = new PowerState(); p.apply('rapid', () => {}); p.apply('spread', () => {})
+    expect(p.active('rapid')).toBe(false)
+    expect(p.active('spread')).toBe(true)
   })
-  it('life calls onLife and is not a fire effect', () => {
-    const p = new PowerState(); let lives = 3
-    p.apply('life', () => { lives++ })
+  it('shield is independent of the fire power-up and absorbs one hit', () => {
+    const p = new PowerState(); p.apply('rapid', () => {}); p.apply('shield', () => {})
+    expect(p.maxBullets()).toBe(4)   // rapid kept
+    expect(p.hasShield()).toBe(true)
+    p.popShield()
+    expect(p.hasShield()).toBe(false)
+    expect(p.maxBullets()).toBe(4)   // still rapid after the shield pops
+  })
+  it('extra life is instant and does not touch the fire power-up', () => {
+    const p = new PowerState(); p.apply('rapid', () => {})
+    let lives = 3; p.apply('life', () => { lives++ })
     expect(lives).toBe(4)
+    expect(p.maxBullets()).toBe(4)
+  })
+  it('a real hit clears the fire power-up', () => {
+    const p = new PowerState(); p.apply('rapid', () => {}); p.clearFire()
     expect(p.maxBullets()).toBe(1)
   })
   it('rng rolls are valid and the drop gate works', () => {

@@ -1,21 +1,28 @@
 import type { PowerUpType } from '../core/types'
 
-type Timed = Exclude<PowerUpType, 'life'>
+type Effect = Exclude<PowerUpType, 'life'> // 'rapid' | 'spread' | 'shield'
+type Fire = 'rapid' | 'spread'
 
-// Power-ups persist until the player takes a hit (PowerState is recreated then).
-// No time expiry — they carry across levels and boss fights.
+// Two independent slots:
+//  - fire: the shooting power-up (rapid/spread) — a new one replaces the old.
+//  - shield: a one-hit bubble, independent of the fire slot.
+// Both persist until a real (unshielded) hit. Extra life is instant.
 export class PowerState {
-  private on = new Set<Timed>()
+  private fire: Fire | null = null
+  private shield = false
 
   apply(kind: PowerUpType, onLife: () => void) {
     if (kind === 'life') { onLife(); return }
-    this.on.clear() // one active power-up at a time — a new pickup replaces the old
-    this.on.add(kind)
+    if (kind === 'shield') { this.shield = true; return } // doesn't disturb the fire slot
+    this.fire = kind // rapid/spread replaces only the current fire power-up
   }
-  active(kind: Timed) { return this.on.has(kind) }
-  maxBullets() { return this.on.has('rapid') ? 4 : this.on.has('spread') ? 3 : 1 }
-  fireInterval(base: number) { return this.on.has('rapid') ? base / 3 : base }
-  hasShield() { return this.on.has('shield') }
+
+  active(kind: Effect) { return kind === 'shield' ? this.shield : this.fire === kind }
+  maxBullets() { return this.fire === 'rapid' ? 4 : this.fire === 'spread' ? 3 : 1 }
+  fireInterval(base: number) { return this.fire === 'rapid' ? base / 3 : base }
+  hasShield() { return this.shield }
+  popShield() { this.shield = false }  // the bubble absorbed a hit
+  clearFire() { this.fire = null }     // a real (unshielded) hit strips the shooting power-up
 }
 
 export function rollPowerUp(rng: () => number): PowerUpType {

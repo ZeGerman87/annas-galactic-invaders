@@ -238,14 +238,14 @@ export class Game {
     if (resolveEnemyHits(this.bullets, this.player)) {
       this.player.invuln = 1.5; this.flash = 0.12; this.shake.add(10)
       if (this.power.hasShield()) {
-        // the shield bubble absorbs the hit and pops — no life lost
-        this.power = new PowerState()
+        // the shield bubble absorbs one hit and pops — fire power-up kept, no life lost
+        this.power.popShield()
         this.audio.sfx('power')
         this.particles.push(...burst(this.player.sprite.x, this.player.sprite.y, 24, this.rng, '#00fbfb'))
       } else {
         this.audio.sfx('hit')
         this.particles.push(...burst(this.player.sprite.x, this.player.sprite.y, 16, this.rng, '#45e0ff'))
-        this.power = new PowerState() // a clean hit strips collected power-ups
+        this.power.clearFire() // a real hit strips only the shooting power-up
         if (this.gs.loseLife()) { this.die(); return }
       }
     }
